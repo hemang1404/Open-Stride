@@ -1,5 +1,8 @@
 package com.openstride.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,21 +13,60 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.openstride.data.model.TrackPoint
 import com.openstride.ui.theme.*
 import com.openstride.ui.viewmodel.TrackingViewModel
 import java.util.Locale
+import android.content.pm.PackageManager
 
 @Composable
 fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
+    val context = LocalContext.current
     val isTracking by viewModel.isTracking.collectAsState()
+    val isPaused by viewModel.isPaused.collectAsState()
     val timerSeconds by viewModel.timerSeconds.collectAsState()
     val distance by viewModel.currentDistance.collectAsState()
     val points by viewModel.sessionPoints.collectAsState()
+    val hasPermission by viewModel.hasLocationPermission.collectAsState()
+    val needsBackgroundPermission by viewModel.needsBackgroundPermission.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        viewModel.setHasPermission(granted)
+        if (!granted) {
+            viewModel.clearError() // Will show new error when trying to start
+        }
+    }
+
+    // Background permission launcher (Android 10+)
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.setBackgroundPermissionGranted()
+        }
+        viewModel.clearError()
+    }
+
+    // Check permission on first composition
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        viewModel.setHasPermission(granted)
+    }
 
     Column(
         modifier = Modifier
@@ -91,6 +133,49 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
             }
         }
 
+        // Error Message Snackbar
+        errorMessage?.let { message ->
+            Snackbar(
+                modifier = Modifier.padding(16.dp),
+                action = {
+                    if (!hasPermission) {
+                        TextButton(
+                            onClick = {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                                viewModel.clearError()
+                            }
+                        ) {
+                            Text("GRANT", color = Color.White)
+                        }
+                    } else if (needsBackgroundPermission && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        TextButton(
+                            onClick = {
+                                backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            }
+                        ) {
+                            Text("ALLOW", color = Color.White)
+                        }
+                    } else {
+                        TextButton(onClick = { viewModel.clearError() }) {
+                            Text("OK", color = Color.White)
+                        }
+                    }
+                },
+                dismissAction = {
+                    IconButton(onClick = { viewModel.clearError() }) {
+                        Text("✕", color = Color.White)
+                    }
+                }
+            ) {
+                Text(message)
+            }
+        }
+
         // Bottom Action Area
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
@@ -103,9 +188,15 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
                     onClick = { viewModel.togglePause() },
                     modifier = Modifier.size(70.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = StravaDark)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isPaused) StravaOrange else StravaDark
+                    )
                 ) {
-                    Text(if (isPaused) "▶" else "||", fontSize = 24.sp, color = Color.White)
+                    Text(
+                        text = if (isPaused) "▶" else "⏸",
+                        fontSize = 24.sp,
+                        color = Color.White
+                    )
                 }
                 
                 Spacer(modifier = Modifier.width(24.dp))
@@ -137,6 +228,7 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
 @Composable
 fun MapLibreView(points: List<TrackPoint>) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     
     // We use AndroidView because MapLibre Compose is still in early stages 
     // and AndroidView gives us the most stable control for late 2024/2025.
@@ -145,6 +237,19 @@ fun MapLibreView(points: List<TrackPoint>) {
         factory = { ctx ->
             org.maplibre.android.maps.MapView(ctx).apply {
                 onCreate(null) // Initialize lifecycle
+                
+                // Properly manage lifecycle
+                lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+                    override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                        onResume()
+                    }
+                    override fun onPause(owner: androidx.lifecycle.LifecycleOwner) {
+                        onPause()
+                    }
+                    override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
+                        onDestroy()
+                    }
+                })
                 getMapAsync { map ->
                     map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
                         if (points.size > 1) {
@@ -169,21 +274,31 @@ fun MapLibreView(points: List<TrackPoint>) {
             }
         },
         update = { mapView ->
-            mapView.getMapAsync { map ->
-                map.getStyle { style ->
-                    if (points.size > 1) {
+            // Only update if there are new points
+            if (points.size > 1) {
+                mapView.getMapAsync { map ->
+                    map.getStyle { style ->
                         val latLngs = points.map { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) }
                         
-                        // Update the polyline (remove old, add new for demo simplicity)
-                        map.clear() 
+                        // Optimized: Remove only polylines, not all annotations
+                        val annotations = map.annotations
+                        annotations.filterIsInstance<org.maplibre.android.annotations.Polyline>().forEach {
+                            map.removeAnnotation(it)
+                        }
+                        
                         val polylineOptions = org.maplibre.android.annotations.PolylineOptions()
                             .addAll(latLngs)
                             .color(StravaOrange.toArgb())
                             .width(5f)
                         map.addPolyline(polylineOptions)
                         
-                        // Smoothly move camera to latest point
-                        map.animateCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(latLngs.last()))
+                        // Only move camera if significantly moved (performance optimization)
+                        if (points.size % 5 == 0) {  // Update camera every 5 points
+                            map.animateCamera(
+                                org.maplibre.android.camera.CameraUpdateFactory.newLatLng(latLngs.last()),
+                                500  // Smooth 500ms animation
+                            )
+                        }
                     }
                 }
             }
