@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.foundation.shape.CircleShape
 import com.openstride.data.model.Session
 import com.openstride.ui.theme.*
 import com.openstride.ui.viewmodel.TrackingViewModel
@@ -21,7 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun HistoryScreen(viewModel: TrackingViewModel = viewModel()) {
+fun HistoryScreen(viewModel: TrackingViewModel = viewModel(), onSessionClick: (String) -> Unit) {
     // We'll need a new ViewModel or update TrackingViewModel to fetch all sessions
     // For now, let's assume TrackingViewModel can provide them
     val sessions by viewModel.allSessions.collectAsState(initial = emptyList())
