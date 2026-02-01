@@ -22,5 +22,7 @@ data class Session(
     val totalDistance: Double = 0.0,
     val mode: String, // Can use an Enum with TypeConverter later
     val confidenceScore: Int = 0,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    val elapsedTimeSeconds: Long = 0, // Actual elapsed time excluding pauses
+    val lastPauseTime: Long? = null // When the session was last paused
 )
