@@ -1,3 +1,77 @@
 <resources>
     <string name="app_name">OpenStride</string>
+    
+    <!-- Main Screen -->
+    <string name="start_button">START</string>
+    <string name="stop_button">STOP</string>
+    <string name="pause_button">PAUSE</string>
+    <string name="resume_button">RESUME</string>
+    
+    <!-- Stats Labels -->
+    <string name="label_time">TIME</string>
+    <string name="label_pace">PACE</string>
+    <string name="label_distance">DISTANCE</string>
+    
+    <!-- Navigation -->
+    <string name="nav_record">Record</string>
+    <string name="nav_activities">Activities</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Screen Titles -->
+    <string name="title_openstride">OPENSTRIDE</string>
+    <string name="title_activities">ACTIVITIES</string>
+    <string name="title_settings">SETTINGS</string>
+    <string name="title_activity_detail">ACTIVITY DETAIL</string>
+    
+    <!-- Permissions -->
+    <string name="permission_title">Track Your Adventures</string>
+    <string name="permission_message">OpenStride uses your location to record your path and calculate distance, even when the app is in the background or the screen is off.</string>
+    <string name="permission_grant_button">GRANT PERMISSION</string>
+    
+    <!-- Error Messages -->
+    <string name="error_location_required">Location permission is required to track your walk</string>
+    <string name="error_background_recommended">Background location permission recommended for continuous tracking</string>
+    <string name="error_tracking_failed">Failed to start tracking: %s</string>
+    
+    <!-- Actions -->
+    <string name="action_grant">GRANT</string>
+    <string name="action_allow">ALLOW</string>
+    <string name="action_ok">OK</string>
+    <string name="action_dismiss">✕</string>
+    
+    <!-- Service Notifications -->
+    <string name="notification_title">OpenStride Active</string>
+    <string name="notification_starting">Starting walk tracking…</string>
+    <string name="notification_tracking">Tracking: %s recorded</string>
+    <string name="notification_paused">Paused</string>
+    <string name="notification_resuming">Resuming tracking…</string>
+    
+    <!-- Settings -->
+    <string name="settings_preferences">PREFERENCES</string>
+    <string name="settings_tracking_logic">TRACKING LOGIC</string>
+    <string name="settings_units">Units</string>
+    <string name="settings_units_metric">Metric (km)</string>
+    <string name="settings_units_imperial">Imperial (miles)</string>
+    <string name="settings_gps_interval">GPS Update Interval</string>
+    <string name="settings_gps_interval_value">%d second(s)</string>
+    
+    <!-- History -->
+    <string name="history_empty">No activities yet. Go for a walk!</string>
+    
+    <!-- Confidence -->
+    <string name="confidence_high">HIGH CONFIDENCE</string>
+    <string name="confidence_medium">MEDIUM CONFIDENCE</string>
+    <string name="confidence_low">LOW CONFIDENCE</string>
+    <string name="confidence_description">This score reflects GPS signal quality during your walk.</string>
+    
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to OpenStride</string>
+    <string name="onboarding_welcome_message">Track your walks with GPS precision and detailed statistics.</string>
+    <string name="onboarding_permission_title">Location Access</string>
+    <string name="onboarding_permission_message">We need location access to track your walks, even when the app is in the background.</string>
+    <string name="onboarding_features_title">Features</string>
+    <string name="onboarding_features_message">• Real-time tracking\n• Distance &amp; pace calculation\n• Route visualization\n• Walk history</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_skip">Skip</string>
 </resources>
