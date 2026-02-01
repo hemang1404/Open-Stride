@@ -117,41 +117,53 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
 
 @Composable
 fun MapLibreView(points: List<TrackPoint>) {
-    // For now, we use a placeholder or the actual MapLibre Compose call
-    // If the library is ready, it looks like this:
-    /*
-    val cameraState = rememberSubscribedCameraState {
-        if (points.isNotEmpty()) {
-            val last = points.last()
-            Point.fromLngLat(last.longitude, last.latitude)
-        }
-    }
+    val context = androidx.compose.ui.platform.LocalContext.current
     
-    MaplibreMap(
+    // We use AndroidView because MapLibre Compose is still in early stages 
+    // and AndroidView gives us the most stable control for late 2024/2025.
+    androidx.compose.ui.viewinterop.AndroidView(
         modifier = Modifier.fillMaxSize(),
-        styleUri = "https://tiles.openfreemap.org/styles/liberty",
-        cameraState = cameraState
-    ) {
-        if (points.size > 1) {
-            val coordinates = points.map { Point.fromLngLat(it.longitude, it.latitude) }
-            LineLayer(
-                id = "path",
-                geometry = LineString.fromLngLats(coordinates),
-                lineColor = StravaOrange.toArgb(),
-                lineWidth = 4f
-            )
+        factory = { ctx ->
+            org.maplibre.android.maps.MapView(ctx).apply {
+                onCreate(null) // Initialize lifecycle
+                getMapAsync { map ->
+                    map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
+                        if (points.size > 1) {
+                            val latLngs = points.map { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) }
+                            
+                            // Draw the path
+                            val polylineOptions = org.maplibre.android.annotations.PolylineOptions()
+                                .addAll(latLngs)
+                                .color(StravaOrange.toArgb())
+                                .width(5f)
+                            
+                            map.addPolyline(polylineOptions)
+
+                            // Zoom to the path
+                            val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
+                                .addAll(latLngs)
+                                .build()
+                            map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 50))
+                        }
+                    }
+                }
+            }
+        },
+        update = { mapView ->
+            // Updates could happen here if points change dynamically
         }
-    }
-    */
-    
-    // Since we are in a sandbox without the full build environment active, 
-    // I'll implement the MapLibre component using the AndroidView fallback 
-    // to ensure max compatibility with current SDK versions.
-    
-    Box(modifier = Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
-        Text("Map View (MapLibre + OSM)", color = Color.Gray)
-    }
+    )
 }
+
+/**
+ * Extension to convert Compose Color to Android Int Color
+ */
+fun Color.toArgb(): Int = android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt()
+)
 
 @Composable
 fun StatItemSmall(label: String, value: String) {
