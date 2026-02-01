@@ -54,12 +54,30 @@ class LocationService : Service() {
 
             startForeground(NOTIFICATION_ID, createNotification("Starting walk tracking..."))
 
-            trackingEngine.startTracking()
+            // 4. Collect and save every GPS point
+            var lastSavedPoint: com.openstride.data.model.TrackPoint? = null
+            val recentPoints = mutableListOf<com.openstride.data.model.TrackPoint>()
             
             trackingEngine.locationUpdates.collect { point ->
-                val pointWithSession = point.copy(sessionId = sessionId)
-                repository.insertTrackPoint(pointWithSession)
-                updateNotification("Tracking your path...")
+                if (com.openstride.util.LocationFilter.shouldAcceptPoint(point, lastSavedPoint)) {
+                    val smoothedPoint = com.openstride.util.LocationSmoother.smooth(point, recentPoints)
+                    val pointWithSession = smoothedPoint.copy(sessionId = sessionId)
+                    repository.insertTrackPoint(pointWithSession)
+                    
+                    lastSavedPoint = pointWithSession
+                    recentPoints.add(pointWithSession)
+                    if (recentPoints.size > 5) recentPoints.removeAt(0)
+
+                    // Update session confidence and distance
+                    val currentSession = repository.getSessionById(sessionId)
+                    currentSession?.let { session ->
+                        val newConfidence = com.openstride.util.ConfidenceScoring.calculateSessionConfidence(recentPoints + smoothedPoint)
+                        // In a real app, distance would be accumulated here too
+                        repository.updateSession(session.copy(confidenceScore = newConfidence))
+                    }
+                    
+                    updateNotification("Tracking your path...")
+                }
             }
         }
     }
