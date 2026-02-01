@@ -29,12 +29,18 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
     object Settings : Screen("settings", Icons.Default.Settings, "Settings")
     object Detail : Screen("detail/{sessionId}", Icons.Default.Info, "Detail")
     object Permission : Screen("permission", Icons.Default.LocationOn, "Permission")
+    object Onboarding : Screen("onboarding", Icons.Default.Info, "Onboarding")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNavigation() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = context.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+    val needsOnboarding = !prefs.getBoolean("onboarding_completed", false)
+    
     val navController = rememberNavController()
+    val startDestination = if (needsOnboarding) Screen.Onboarding.route else Screen.Tracking.route
     
     Scaffold(
         bottomBar = {
@@ -98,6 +104,15 @@ fun AppNavigation() {
             composable(Screen.Permission.route) {
                 PermissionRationaleScreen(onGrantClick = {
                     // This will be handled in MainScreen or via a callback to MainActivity
+                })
+            }
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(onComplete = {
+                    val prefs = context.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+                    prefs.edit().putBoolean("onboarding_completed", true).apply()
+                    navController.navigate(Screen.Tracking.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
                 })
             }
         }
