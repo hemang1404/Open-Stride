@@ -13,6 +13,7 @@ object ServiceLocator {
     
     private var database: OpenStrideDatabase? = null
     private var repository: TrackingRepository? = null
+    private var settingsRepository: SettingsRepository? = null
     private var trackingEngine: TrackingEngine? = null
 
     fun provideRepository(context: Context): TrackingRepository {
@@ -21,6 +22,14 @@ object ServiceLocator {
             this.database = database
             val repo = TrackingRepository(database.sessionDao(), database.trackPointDao())
             repository = repo
+            repo
+        }
+    }
+
+    fun provideSettingsRepository(context: Context): SettingsRepository {
+        return settingsRepository ?: synchronized(this) {
+            val repo = SettingsRepository(context.applicationContext)
+            settingsRepository = repo
             repo
         }
     }
