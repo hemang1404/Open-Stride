@@ -28,6 +28,7 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
     object History : Screen("history", Icons.Default.List, "Activities")
     object Settings : Screen("settings", Icons.Default.Settings, "Settings")
     object Detail : Screen("detail/{sessionId}", Icons.Default.Info, "Detail")
+    object Permission : Screen("permission", Icons.Default.LocationOn, "Permission")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +94,11 @@ fun AppNavigation() {
             ) { backStackEntry ->
                 val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
                 SessionDetailScreen(sessionId = sessionId)
+            }
+            composable(Screen.Permission.route) {
+                PermissionRationaleScreen(onGrantClick = {
+                    // This will be handled in MainScreen or via a callback to MainActivity
+                })
             }
         }
     }
