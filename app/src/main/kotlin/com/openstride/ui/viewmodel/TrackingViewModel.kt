@@ -38,6 +38,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
 
     val allSessions: Flow<List<Session>> = repository.allSessions
 
+    suspend fun getSessionById(sessionId: String): Session? = repository.getSessionById(sessionId)
+    
+    fun getPointsForSession(sessionId: String): Flow<List<TrackPoint>> = repository.getPointsForSession(sessionId)
+
     private var timerJob: Job? = null
     private var lastPoint: TrackPoint? = null
 
