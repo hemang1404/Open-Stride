@@ -56,27 +56,39 @@ class LocationService : Service() {
 
             // 4. Collect and save every GPS point
             var lastSavedPoint: com.openstride.data.model.TrackPoint? = null
+            var totalDistanceMeters = 0.0
             val recentPoints = mutableListOf<com.openstride.data.model.TrackPoint>()
             
             trackingEngine.locationUpdates.collect { point ->
                 if (com.openstride.util.LocationFilter.shouldAcceptPoint(point, lastSavedPoint)) {
                     val smoothedPoint = com.openstride.util.LocationSmoother.smooth(point, recentPoints)
                     val pointWithSession = smoothedPoint.copy(sessionId = sessionId)
-                    repository.insertTrackPoint(pointWithSession)
                     
+                    // Accumulate distance
+                    lastSavedPoint?.let { last ->
+                        totalDistanceMeters += com.openstride.util.DistanceCalculator.calculateHaversineDistance(
+                            last.latitude, last.longitude,
+                            smoothedPoint.latitude, smoothedPoint.longitude
+                        )
+                    }
+                    
+                    repository.insertTrackPoint(pointWithSession)
                     lastSavedPoint = pointWithSession
                     recentPoints.add(pointWithSession)
                     if (recentPoints.size > 5) recentPoints.removeAt(0)
 
-                    // Update session confidence and distance
+                    // Update session confidence and total distance
                     val currentSession = repository.getSessionById(sessionId)
                     currentSession?.let { session ->
-                        val newConfidence = com.openstride.util.ConfidenceScoring.calculateSessionConfidence(recentPoints + smoothedPoint)
-                        // In a real app, distance would be accumulated here too
-                        repository.updateSession(session.copy(confidenceScore = newConfidence))
+                        val newConfidence = com.openstride.util.ConfidenceScoring.calculateSessionConfidence(recentPoints)
+                        repository.updateSession(session.copy(
+                            confidenceScore = newConfidence,
+                            totalDistance = totalDistanceMeters
+                        ))
                     }
                     
-                    updateNotification("Tracking your path...")
+                    val kmDisplay = String.format(Locale.US, "%.2f km", totalDistanceMeters / 1000.0)
+                    updateNotification("Tracking: $kmDisplay recorded")
                 }
             }
         }
