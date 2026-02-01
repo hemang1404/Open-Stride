@@ -21,21 +21,29 @@ class LocationService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private lateinit var trackingEngine: TrackingEngine
     private lateinit var repository: TrackingRepository
+    private lateinit var settingsRepository: com.openstride.data.repository.SettingsRepository
     
     private var currentSessionId: String? = null
+    private var isPaused = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         repository = ServiceLocator.provideRepository(this)
+        settingsRepository = ServiceLocator.provideSettingsRepository(this)
         trackingEngine = ServiceLocator.provideTrackingEngine(this)
+        
+        // Apply interval from settings
+        trackingEngine.setUpdateInterval(settingsRepository.getTrackingInterval())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> startTracking()
             ACTION_STOP -> stopTracking()
+            ACTION_PAUSE -> pauseTracking()
+            ACTION_RESUME -> resumeTracking()
         }
         return START_STICKY
     }
@@ -43,6 +51,7 @@ class LocationService : Service() {
     private fun startTracking() {
         val sessionId = UUID.randomUUID().toString()
         currentSessionId = sessionId
+        isPaused = false
 
         serviceScope.launch {
             val session = Session(
@@ -63,6 +72,8 @@ class LocationService : Service() {
             val recentPoints = mutableListOf<com.openstride.data.model.TrackPoint>()
             
             trackingEngine.locationUpdates.collect { point ->
+                if (isPaused) return@collect // Skip points if paused
+
                 if (com.openstride.util.LocationFilter.shouldAcceptPoint(point, lastSavedPoint)) {
                     val smoothedPoint = com.openstride.util.LocationSmoother.smooth(point, recentPoints)
                     val pointWithSession = smoothedPoint.copy(sessionId = sessionId)

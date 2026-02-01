@@ -13,7 +13,7 @@ import com.openstride.data.model.TrackPoint
  */
 @Database(
     entities = [Session::class, TrackPoint::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class OpenStrideDatabase : RoomDatabase() {

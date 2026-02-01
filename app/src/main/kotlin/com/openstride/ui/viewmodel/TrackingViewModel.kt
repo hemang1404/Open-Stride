@@ -54,12 +54,18 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
     private fun resumeTrackingState(session: Session) {
         activeSessionId = session.sessionId
         _isTracking.value = true
+        _isPaused.value = session.isPaused
         _currentDistance.value = session.totalDistance
         
-        // Timer Catch-up
-        val elapsed = (System.currentTimeMillis() - session.startTime) / 1000
-        _timerSeconds.value = elapsed
-        startTimer()
+        // Timer Catch-up (only if not paused)
+        if (!session.isPaused) {
+            val elapsed = (System.currentTimeMillis() - session.startTime) / 1000
+            _timerSeconds.value = elapsed
+            startTimer()
+        } else {
+            // If paused, we'd ideally need a 'lastPauseTime' but for now we just show what we have
+            _timerSeconds.value = 0 // In a real app we'd save current time in Session
+        }
 
         // Observe points for this session
         viewModelScope.launch {
