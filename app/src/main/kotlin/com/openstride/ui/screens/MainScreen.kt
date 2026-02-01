@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.openstride.data.model.TrackPoint
 import com.openstride.ui.theme.*
 import com.openstride.ui.viewmodel.TrackingViewModel
 import java.util.Locale
@@ -150,7 +152,24 @@ fun MapLibreView(points: List<TrackPoint>) {
             }
         },
         update = { mapView ->
-            // Updates could happen here if points change dynamically
+            mapView.getMapAsync { map ->
+                map.getStyle { style ->
+                    if (points.size > 1) {
+                        val latLngs = points.map { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) }
+                        
+                        // Update the polyline (remove old, add new for demo simplicity)
+                        map.clear() 
+                        val polylineOptions = org.maplibre.android.annotations.PolylineOptions()
+                            .addAll(latLngs)
+                            .color(StravaOrange.toArgb())
+                            .width(5f)
+                        map.addPolyline(polylineOptions)
+                        
+                        // Smoothly move camera to latest point
+                        map.animateCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(latLngs.last()))
+                    }
+                }
+            }
         }
     )
 }
