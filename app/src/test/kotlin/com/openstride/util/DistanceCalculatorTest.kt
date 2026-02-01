@@ -12,7 +12,10 @@ class DistanceCalculatorTest {
         val p1 = TrackPoint(latitude = 51.5007, longitude = -0.1246, accuracy = 1f, timestamp = 0)
         val p2 = TrackPoint(latitude = 51.5007, longitude = -0.1250, accuracy = 1f, timestamp = 0)
         
-        val distance = DistanceCalculator.calculateDistance(p1, p2)
+        val distance = DistanceCalculator.calculateHaversineDistance(
+            p1.latitude, p1.longitude,
+            p2.latitude, p2.longitude
+        )
         
         // Approx 27.8 meters
         assertEquals(27.8, distance, 0.5)
