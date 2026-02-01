@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.openstride.data.model.Session
 import com.openstride.data.model.TrackPoint
 
@@ -13,7 +15,7 @@ import com.openstride.data.model.TrackPoint
  */
 @Database(
     entities = [Session::class, TrackPoint::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class OpenStrideDatabase : RoomDatabase() {
@@ -29,6 +31,25 @@ abstract class OpenStrideDatabase : RoomDatabase() {
         private var INSTANCE: OpenStrideDatabase? = null
 
         /**
+         * Migration from version 1 to 2: Adds isPaused column to sessions table
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE sessions ADD COLUMN isPaused INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * Migration from version 2 to 3: Adds timer tracking fields
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE sessions ADD COLUMN elapsedTimeSeconds INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE sessions ADD COLUMN lastPauseTime INTEGER")
+            }
+        }
+
+        /**
          * Returns the single instance of the database.
          * If it doesn't exist, it creates it using the "Singleton" pattern.
          */
@@ -41,7 +62,8 @@ abstract class OpenStrideDatabase : RoomDatabase() {
                     OpenStrideDatabase::class.java,
                     "open_stride_database"
                 )
-                .fallbackToDestructiveMigration() // Useful during development: clears DB if schema changes
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .fallbackToDestructiveMigration() // Only as last resort for dev
                 .build()
                 INSTANCE = instance
                 instance
