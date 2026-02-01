@@ -17,6 +17,9 @@ object LocationFilter {
      * Determines if a new point should be accepted based on the previous point.
      */
     fun shouldAcceptPoint(newPoint: TrackPoint, lastPoint: TrackPoint?): Boolean {
+        // 0. Data validation
+        if (!isValidPoint(newPoint)) return false
+        
         // 1. Basic Accuracy Check
         if (newPoint.accuracy > MIN_ACCURACY_THRESHOLD) return false
 
@@ -39,6 +42,33 @@ object LocationFilter {
             return false
         }
 
+        return true
+    }
+
+    /**
+     * Validates that a TrackPoint has reasonable data.
+     */
+    private fun isValidPoint(point: TrackPoint): Boolean {
+        // Check for empty session ID
+        if (point.sessionId.isEmpty()) return false
+        
+        // Validate coordinates are within valid ranges
+        if (point.latitude < -90.0 || point.latitude > 90.0) return false
+        if (point.longitude < -180.0 || point.longitude > 180.0) return false
+        
+        // Validate accuracy is positive
+        if (point.accuracy <= 0) return false
+        
+        // Validate timestamp is reasonable (not in future, not too old)
+        val now = System.currentTimeMillis()
+        if (point.timestamp > now + 5000) return false // Max 5 seconds in future
+        if (point.timestamp < now - 86400000) return false // Max 24 hours old
+        
+        // Validate speed if present
+        point.speed?.let { speed ->
+            if (speed < 0) return false // Speed can't be negative
+        }
+        
         return true
     }
 
