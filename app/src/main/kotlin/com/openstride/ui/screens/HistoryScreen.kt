@@ -61,7 +61,7 @@ fun HistoryScreen(viewModel: TrackingViewModel = viewModel()) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(sessions) { session ->
-                    SessionCard(session)
+                    SessionCard(session, onClick = { onSessionClick(session.sessionId) })
                 }
             }
         }
@@ -70,21 +70,40 @@ fun HistoryScreen(viewModel: TrackingViewModel = viewModel()) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SessionCard(session: Session) {
+fun ConfidenceBadgeTiny(score: Int) {
+    val color = when {
+        score >= 80 -> Color(0xFF4CAF50)
+        score >= 50 -> Color(0xFFFFC107)
+        else -> Color(0xFFF44336)
+    }
+    Box(
+        modifier = Modifier
+            .size(8.dp)
+            .background(color, CircleShape)
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SessionCard(session: Session, onClick: () -> Unit) {
     Card(
-        onClick = { /* Navigate to detail */ },
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = StravaLight),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = formatDate(session.startTime),
-                fontSize = 12.sp,
-                color = StravaTextSecondary,
-                fontWeight = FontWeight.Bold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = formatDate(session.startTime),
+                    fontSize = 12.sp,
+                    color = StravaTextSecondary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                ConfidenceBadgeTiny(session.confidenceScore)
+            }
             Text(
                 text = "Afternoon Walk", // Placeholder for dynamic title
                 fontSize = 18.sp,
