@@ -38,32 +38,37 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
 
     val allSessions: Flow<List<Session>> = repository.allSessions
 
-    suspend fun getSessionById(sessionId: String): Session? = repository.getSessionById(sessionId)
-    
-    fun getPointsForSession(sessionId: String): Flow<List<TrackPoint>> = repository.getPointsForSession(sessionId)
-
     private var timerJob: Job? = null
-    private var lastPoint: TrackPoint? = null
+    private var activeSessionId: String? = null
 
     init {
-        // Observe the current session dots to update the path on the map
+        // Observe the active session to resume UI state if app was killed
         viewModelScope.launch {
-            trackingEngine.locationUpdates.collect { point ->
-                if (_isTracking.value) {
-                    val currentList = _sessionPoints.value.toMutableList()
-                    currentList.add(point)
-                    _sessionPoints.value = currentList
+            val activeSession = repository.getActiveSession()
+            if (activeSession != null) {
+                resumeTrackingState(activeSession)
+            }
+        }
+    }
 
-                    // Calculate distance from previous point
-                    lastPoint?.let { last ->
-                        val distance = DistanceCalculator.calculateHaversineDistance(
-                            last.latitude, last.longitude,
-                            point.latitude, point.longitude
-                        )
-                        _currentDistance.value += distance
-                    }
-                    lastPoint = point
-                }
+    private fun resumeTrackingState(session: Session) {
+        activeSessionId = session.sessionId
+        _isTracking.value = true
+        _currentDistance.value = session.totalDistance
+        
+        // Timer Catch-up
+        val elapsed = (System.currentTimeMillis() - session.startTime) / 1000
+        _timerSeconds.value = elapsed
+        startTimer()
+
+        // Observe points for this session
+        viewModelScope.launch {
+            repository.getPointsForSession(session.sessionId).collect { points ->
+                _sessionPoints.value = points
+                
+                // Keep distance in sync with DB
+                val currentSession = repository.getSessionById(session.sessionId)
+                currentSession?.let { _currentDistance.value = it.totalDistance }
             }
         }
     }
@@ -81,7 +86,6 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
         _timerSeconds.value = 0
         _currentDistance.value = 0.0
         _sessionPoints.value = emptyList()
-        lastPoint = null
         
         startTimer()
 
@@ -90,11 +94,18 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
             action = LocationService.ACTION_START
         }
         getApplication<Application>().startForegroundService(intent)
+
+        // Wait a small bit for DB to create session, then observe it
+        viewModelScope.launch {
+            delay(500)
+            repository.getActiveSession()?.let { resumeTrackingState(it) }
+        }
     }
 
     private fun stopTracking() {
         _isTracking.value = false
         stopTimer()
+        activeSessionId = null
 
         // Stop the background service
         val intent = Intent(getApplication(), LocationService::class.java).apply {
