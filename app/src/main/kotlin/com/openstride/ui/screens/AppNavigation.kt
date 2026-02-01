@@ -27,6 +27,7 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
     object Tracking : Screen("tracking", Icons.Default.PlayArrow, "Record")
     object History : Screen("history", Icons.Default.List, "Activities")
     object Settings : Screen("settings", Icons.Default.Settings, "Settings")
+    object Detail : Screen("detail/{sessionId}", Icons.Default.Info, "Detail")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,35 +37,38 @@ fun AppNavigation() {
     
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = StravaLight,
-                contentColor = StravaOrange,
-                tonalElevation = 8.dp
-            ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-                
-                listOf(Screen.Tracking, Screen.History, Screen.Settings).forEach { screen ->
-                    NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        label = { Text(screen.label, fontWeight = FontWeight.Bold, fontSize = 10.sp) },
-                        selected = currentRoute == screen.route,
-                        onClick = {
-                            if (currentRoute != screen.route) {
-                                navController.navigate(screen.route) {
-                                    popUpTo(navController.graph.startDestinationId)
-                                    launchSingleTop = true
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route
+            
+            // Only show bottom bar on top-level screens
+            if (currentRoute in listOf(Screen.Tracking.route, Screen.History.route, Screen.Settings.route)) {
+                NavigationBar(
+                    containerColor = StravaLight,
+                    contentColor = StravaOrange,
+                    tonalElevation = 8.dp
+                ) {
+                    listOf(Screen.Tracking, Screen.History, Screen.Settings).forEach { screen ->
+                        NavigationBarItem(
+                            icon = { Icon(screen.icon, contentDescription = screen.label) },
+                            label = { Text(screen.label, fontWeight = FontWeight.Bold, fontSize = 10.sp) },
+                            selected = currentRoute == screen.route,
+                            onClick = {
+                                if (currentRoute != screen.route) {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.startDestinationId)
+                                        launchSingleTop = true
+                                    }
                                 }
-                            }
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = StravaOrange,
-                            selectedTextColor = StravaOrange,
-                            unselectedIconColor = StravaTextSecondary,
-                            unselectedTextColor = StravaTextSecondary,
-                            indicatorColor = StravaOrange.copy(alpha = 0.1f)
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = StravaOrange,
+                                selectedTextColor = StravaOrange,
+                                unselectedIconColor = StravaTextSecondary,
+                                unselectedTextColor = StravaTextSecondary,
+                                indicatorColor = StravaOrange.copy(alpha = 0.1f)
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -75,11 +79,20 @@ fun AppNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Tracking.route) { MainScreen() }
-            composable(Screen.History.route) { HistoryScreen() }
+            composable(Screen.History.route) { 
+                HistoryScreen(onSessionClick = { id -> 
+                    navController.navigate("detail/$id")
+                }) 
+            }
             composable(Screen.Settings.route) { 
-                Box(modifier = Modifier.fillMaxSize().background(StravaGrey), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    Text("Settings Screen Coming Soon", color = StravaTextSecondary)
-                }
+                SettingsScreen()
+            }
+            composable(
+                route = Screen.Detail.route,
+                arguments = listOf(androidx.navigation.navArgument("sessionId") { type = androidx.navigation.NavType.StringType })
+            ) { backStackEntry ->
+                val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+                SessionDetailScreen(sessionId = sessionId)
             }
         }
     }
