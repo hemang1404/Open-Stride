@@ -53,6 +53,9 @@ class LocationService : Service() {
             repository.insertSession(session)
 
             startForeground(NOTIFICATION_ID, createNotification("Starting walk tracking..."))
+            
+            // CRITICAL FIX: Start the hardware engine!
+            trackingEngine.startTracking()
 
             // 4. Collect and save every GPS point
             var lastSavedPoint: com.openstride.data.model.TrackPoint? = null
