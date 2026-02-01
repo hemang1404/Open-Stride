@@ -2,10 +2,13 @@ package com.openstride.service
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import com.openstride.MainActivity
+import com.openstride.R
 import com.openstride.ServiceLocator
 import com.openstride.data.model.Session
 import com.openstride.data.repository.TrackingRepository
@@ -25,6 +28,7 @@ class LocationService : Service() {
     
     private var currentSessionId: String? = null
     private var isPaused = false
+    private var trackingJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -53,7 +57,7 @@ class LocationService : Service() {
         currentSessionId = sessionId
         isPaused = false
 
-        serviceScope.launch {
+        trackingJob = serviceScope.launch {
             val session = Session(
                 sessionId = sessionId,
                 startTime = System.currentTimeMillis(),
@@ -61,7 +65,7 @@ class LocationService : Service() {
             )
             repository.insertSession(session)
 
-            startForeground(NOTIFICATION_ID, createNotification("Starting walk tracking..."))
+            startForeground(NOTIFICATION_ID, createNotification(getString(R.string.notification_starting)))
             
             // CRITICAL FIX: Start the hardware engine!
             trackingEngine.startTracking()
@@ -102,13 +106,14 @@ class LocationService : Service() {
                     }
                     
                     val kmDisplay = String.format(Locale.US, "%.2f km", totalDistanceMeters / 1000.0)
-                    updateNotification("Tracking: $kmDisplay recorded")
+                    updateNotification(getString(R.string.notification_tracking, kmDisplay))
                 }
             }
         }
     }
 
     private fun stopTracking() {
+        trackingJob?.cancel()
         trackingEngine.stopTracking()
         
         serviceScope.launch {
@@ -126,11 +131,45 @@ class LocationService : Service() {
         }
     }
 
+    private fun pauseTracking() {
+        isPaused = true
+        updateNotification(getString(R.string.notification_paused))
+        serviceScope.launch {
+            currentSessionId?.let { id ->
+                val session = repository.getSessionById(id)
+                session?.let {
+                    repository.updateSession(it.copy(isPaused = true))
+                }
+            }
+        }
+    }
+
+    private fun resumeTracking() {
+        isPaused = false
+        updateNotification(getString(R.string.notification_resuming))
+        serviceScope.launch {
+            currentSessionId?.let { id ->
+                val session = repository.getSessionById(id)
+                session?.let {
+                    repository.updateSession(it.copy(isPaused = false))
+                }
+            }
+        }
+    }
+
     private fun createNotification(content: String): Notification {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
         return NotificationCompat.Builder(this, "tracking_channel")
-            .setContentTitle("OpenStride Active")
+            .setContentTitle(getString(R.string.notification_title))
             .setContentText(content)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
     }
@@ -143,12 +182,16 @@ class LocationService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        trackingJob?.cancel()
+        trackingEngine.stopTracking()
         serviceScope.cancel()
     }
 
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+        const val ACTION_PAUSE = "ACTION_PAUSE"
+        const val ACTION_RESUME = "ACTION_RESUME"
         const val NOTIFICATION_ID = 1
     }
 }
