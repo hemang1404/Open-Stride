@@ -26,6 +26,8 @@ class DistanceCalculatorTest {
         val p1 = TrackPoint(latitude = 0.0, longitude = 0.0, accuracy = 1f, timestamp = 0)
         val p2 = TrackPoint(latitude = 0.0, longitude = 0.0, accuracy = 1f, timestamp = 0)
         
-        assertEquals(0.0, DistanceCalculator.calculateDistance(p1, p2), 0.01)
+        assertEquals(0.0, DistanceCalculator.calculateHaversineDistance(
+            p1.latitude, p1.longitude, p2.latitude, p2.longitude
+        ), 0.01)
     }
 }
