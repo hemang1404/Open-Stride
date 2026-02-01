@@ -68,7 +68,8 @@ dependencies {
 
     // Location & Maps
     implementation("com.google.android.gms:play-services-location:21.1.0")
-    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("org.maplibre.gl:android-sdk:11.5.2")
+    implementation("org.maplibre.gl:maplibre-compose:0.1.0")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.6")
