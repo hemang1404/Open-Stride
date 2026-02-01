@@ -36,6 +36,8 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
     private val _sessionPoints = MutableStateFlow<List<TrackPoint>>(emptyList())
     val sessionPoints: StateFlow<List<TrackPoint>> = _sessionPoints.asStateFlow()
 
+    val allSessions: Flow<List<Session>> = repository.allSessions
+
     private var timerJob: Job? = null
     private var lastPoint: TrackPoint? = null
 
