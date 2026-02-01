@@ -92,26 +92,43 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
         }
 
         // Bottom Action Area
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 32.dp),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                onClick = { viewModel.toggleTracking() },
-                modifier = Modifier.size(if (isTracking) 80.dp else 100.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isTracking) StravaDark else StravaOrange
-                ),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text(
-                    text = if (isTracking) "■" else "▶",
-                    fontSize = if (isTracking) 32.sp else 40.sp,
-                    color = Color.White
-                )
+            if (isTracking) {
+                // Pause/Resume Button
+                Button(
+                    onClick = { viewModel.togglePause() },
+                    modifier = Modifier.size(70.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = StravaDark)
+                ) {
+                    Text(if (isPaused) "▶" else "||", fontSize = 24.sp, color = Color.White)
+                }
+                
+                Spacer(modifier = Modifier.width(24.dp))
+                
+                // Stop Button
+                Button(
+                    onClick = { viewModel.toggleTracking() },
+                    modifier = Modifier.size(70.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("■", fontSize = 24.sp, color = Color.White)
+                }
+            } else {
+                // Big Start Button
+                Button(
+                    onClick = { viewModel.toggleTracking() },
+                    modifier = Modifier.size(90.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = StravaOrange)
+                ) {
+                    Text("START", fontWeight = FontWeight.Black, color = Color.White)
+                }
             }
         }
     }
