@@ -18,6 +18,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.CameraUpdateFactory
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.openstride.data.model.TrackPoint
@@ -227,83 +234,71 @@ fun MainScreen(viewModel: TrackingViewModel = viewModel()) {
 
 @Composable
 fun MapLibreView(points: List<TrackPoint>) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    
-    // We use AndroidView because MapLibre Compose is still in early stages 
-    // and AndroidView gives us the most stable control for late 2024/2025.
-    androidx.compose.ui.viewinterop.AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { ctx ->
-            org.maplibre.android.maps.MapView(ctx).apply {
-                onCreate(null) // Initialize lifecycle
-                
-                // Properly manage lifecycle
-                lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
-                    override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
-                        onResume()
-                    }
-                    override fun onPause(owner: androidx.lifecycle.LifecycleOwner) {
-                        onPause()
-                    }
-                    override fun onDestroy(owner: androidx.lifecycle.LifecycleOwner) {
-                        onDestroy()
-                    }
-                })
-                getMapAsync { map ->
-                    map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
-                        if (points.size > 1) {
-                            val latLngs = points.map { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) }
-                            
-                            // Draw the path
-                            val polylineOptions = org.maplibre.android.annotations.PolylineOptions()
-                                .addAll(latLngs)
-                                .color(StravaOrange.toArgb())
-                                .width(5f)
-                            
-                            map.addPolyline(polylineOptions)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.default.copy(
+            target = if (points.isNotEmpty()) 
+                com.google.android.gms.maps.model.LatLng(points[0].latitude, points[0].longitude)
+            else
+                com.google.android.gms.maps.model.LatLng(0.0, 0.0),
+            zoom = 15f
+        )
+    }
 
-                            // Zoom to the path
-                            val bounds = org.maplibre.android.geometry.LatLngBounds.Builder()
-                                .addAll(latLngs)
-                                .build()
-                            map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngBounds(bounds, 50))
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState
+    ) {
+        if (points.size > 1) {
+            // Draw polyline for the route
+            Polyline(
+                points = points.map { 
+                    com.google.android.gms.maps.model.LatLng(it.latitude, it.longitude) 
+                },
+                color = StravaOrange,
+                width = 5f
+            )
+
+            // Add marker at start
+            Marker(
+                state = MarkerState(
+                    position = com.google.android.gms.maps.model.LatLng(
+                        points[0].latitude, 
+                        points[0].longitude
+                    )
+                ),
+                title = "Start"
+            )
+
+            // Add marker at end
+            Marker(
+                state = MarkerState(
+                    position = com.google.android.gms.maps.model.LatLng(
+                        points.last().latitude, 
+                        points.last().longitude
+                    )
+                ),
+                title = "End"
+            )
+
+            // Center camera on the route
+            LaunchedEffect(points.size) {
+                if (points.size > 1) {
+                    val bounds = com.google.android.gms.maps.model.LatLngBounds.Builder()
+                        .apply {
+                            points.forEach { 
+                                include(com.google.android.gms.maps.model.LatLng(it.latitude, it.longitude))
+                            }
                         }
-                    }
-                }
-            }
-        },
-        update = { mapView ->
-            // Only update if there are new points
-            if (points.size > 1) {
-                mapView.getMapAsync { map ->
-                    map.getStyle { style ->
-                        val latLngs = points.map { org.maplibre.android.geometry.LatLng(it.latitude, it.longitude) }
-                        
-                        // Optimized: Remove only polylines, not all annotations
-                        val annotations = map.annotations
-                        annotations.filterIsInstance<org.maplibre.android.annotations.Polyline>().forEach {
-                            map.removeAnnotation(it)
-                        }
-                        
-                        val polylineOptions = org.maplibre.android.annotations.PolylineOptions()
-                            .addAll(latLngs)
-                            .color(StravaOrange.toArgb())
-                            .width(5f)
-                        map.addPolyline(polylineOptions)
-                        
-                        // Only move camera if significantly moved (performance optimization)
-                        if (points.size % 5 == 0) {  // Update camera every 5 points
-                            map.animateCamera(
-                                org.maplibre.android.camera.CameraUpdateFactory.newLatLng(latLngs.last()),
-                                500  // Smooth 500ms animation
-                            )
-                        }
-                    }
+                        .build()
+                    
+                    cameraPositionState.animate(
+                        update = CameraUpdateFactory.newLatLngBounds(bounds, 100),
+                        durationMs = 1000
+                    )
                 }
             }
         }
-    )
+    }
 }
 
 /**
