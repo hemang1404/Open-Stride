@@ -1,19 +1,20 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
+    id("com.google.devtools.ksp") version "1.9.24-1.0.20"
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
+    // Compose support enabled via buildFeatures { compose = true }
 }
 
 android {
     namespace = "com.openstride"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.openstride"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -30,17 +31,20 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "11"
+        freeCompilerArgs = listOf("-Xjsr305=strict")
     }
     buildFeatures {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        // Match the Compose Compiler to the Compose BOM used in dependencies.
+        // If you upgrade to Kotlin 2.0+, instead apply the Compose Compiler Gradle plugin.
+        kotlinCompilerExtensionVersion = "1.5.3"
     }
     packaging {
         resources {
@@ -50,7 +54,7 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2023.10.01")
+    val composeBom = platform("androidx.compose:compose-bom:2023.08.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -60,7 +64,24 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    
+    // Explicit pins for Compose 1.5.0 to prevent transitive upgrades
+    implementation("androidx.compose.ui:ui:1.5.0")
+    implementation("androidx.compose.ui:ui-graphics:1.5.0")
+    implementation("androidx.compose.ui:ui-text:1.5.0")
+    implementation("androidx.compose.ui:ui-tooling:1.5.0")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.0")
+    implementation("androidx.compose.ui:ui-util:1.5.0")
+    implementation("androidx.compose.ui:ui-geometry:1.5.0")
+    implementation("androidx.compose.ui:ui-unit:1.5.0")
+    implementation("androidx.compose.foundation:foundation:1.5.0")
+    implementation("androidx.compose.foundation:foundation-layout:1.5.0")
+    implementation("androidx.compose.animation:animation:1.5.0")
+    implementation("androidx.compose.animation:animation-core:1.5.0")
+    implementation("androidx.compose.runtime:runtime:1.5.0")
+    implementation("androidx.compose.runtime:runtime-saveable:1.5.0")
+    implementation("androidx.core:core:1.12.0")
     
     // Room
     val roomVersion = "2.6.1"
@@ -70,15 +91,15 @@ dependencies {
 
     // Location & Maps
     implementation("com.google.android.gms:play-services-location:21.1.0")
-    implementation("org.maplibre.gl:android-sdk:11.5.2")
-    implementation("org.maplibre.gl:maplibre-compose:0.1.0")
+    implementation("com.google.maps.android:maps-compose:4.0.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
 
-    // Accompanist for Pager (Onboarding)
-    implementation("com.google.accompanist:accompanist-pager:0.32.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
+    // Accompanist for Pager (Onboarding) - force older version compatible with Compose 1.5.x
+    implementation("com.google.accompanist:accompanist-pager:0.30.1")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.30.1")
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
