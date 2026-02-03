@@ -30,7 +30,7 @@ object LocationFilter {
         if (timeDelta <= 0) return false // Ignore duplicate or out-of-order points
 
         // 3. Distance & Speed check (The "Jump" filter)
-        val distance = DistanceCalculator.calculateHaversineDistance(
+        val distance = DistanceCalculator.calculateVincentyDistance(
             lastPoint.latitude, lastPoint.longitude,
             newPoint.latitude, newPoint.longitude
         )

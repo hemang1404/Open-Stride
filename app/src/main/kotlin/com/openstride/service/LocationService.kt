@@ -84,7 +84,7 @@ class LocationService : Service() {
                     
                     // Accumulate distance
                     lastSavedPoint?.let { last ->
-                        totalDistanceMeters += com.openstride.util.DistanceCalculator.calculateHaversineDistance(
+                        totalDistanceMeters += com.openstride.util.DistanceCalculator.calculateVincentyDistance(
                             last.latitude, last.longitude,
                             smoothedPoint.latitude, smoothedPoint.longitude
                         )
